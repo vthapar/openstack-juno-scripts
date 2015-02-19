@@ -11,6 +11,8 @@ import subprocess
 # These modules will be loaded later after downloading
 iniparse = None
 psutil = None
+odl_port = 8080
+odl_ip = None
 
 mysql_password = "secret"
 service_tenant = None
@@ -132,6 +134,7 @@ def initialize_system():
 
 ip_address = get_ip_address("eth0")
 ip_address_mgnt = get_ip_address("eth1")
+odl_ip = raw_input('OpenDaylight IP: ')
 
 def install_rabbitmq():
     execute("apt-get install rabbitmq-server -y", True)
@@ -376,7 +379,14 @@ def install_and_configure_neutron():
 	
     add_to_conf(neutron_plugin_conf, "ml2", "type_drivers", "vlan,vxlan")
     add_to_conf(neutron_plugin_conf, "ml2", "tenant_network_types", "vlan,vxlan")
-    add_to_conf(neutron_plugin_conf, "ml2", "mechanism_drivers", "openvswitch,linuxbridge")
+    if odl_ip is not None:
+        add_to_conf(neutron_plugin_conf, "ml2", "mechanism_drivers", "opendaylight,linuxbridge,logger")
+        add_to_conf(neutron_plugin_conf, "ml2_odl", "username", "admin")
+        add_to_conf(neutron_plugin_conf, "ml2_odl", "password", "admin")
+        add_to_conf(neutron_plugin_conf, "ml2_odl", "url", "http://"+odl_ip+":"+odl_port+"/controller/nb/v2/neutron")
+    else:
+        add_to_conf(neutron_plugin_conf, "ml2", "mechanism_drivers", "openvswitch,linuxbridge")
+        
     add_to_conf(neutron_plugin_conf, "ml2_type_vlan", "network_vlan_ranges", "physnet1:2000:2999")
     add_to_conf(neutron_plugin_conf, "ml2_type_vxlan", "vni_ranges", "500:999")
     add_to_conf(neutron_plugin_conf, "securitygroup", "firewall_driver", "neutron.agent.linux.iptables_firewall.OVSHybridIptablesFirewallDriver")
