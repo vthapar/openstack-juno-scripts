@@ -128,6 +128,9 @@ def initialize_system():
 my_ip = get_ip_address('eth1')
 ip_address = raw_input('Controller IP: ')
 ip_address_mgnt= raw_input('Controller Mgmt IP: ')
+odl_ip = raw_input('ODL IP: ')
+#odl_local_ip should be Data interface IP
+odl_local_ip = get_ip_address('eth2')
 
 def install_and_configure_ntp():
     execute("apt-get install ntp -y")
@@ -228,9 +231,17 @@ def install_and_configure_ovs():
     add_to_conf(neutron_plugin_conf, "OVS", "integration_bridge", "br-int")
 
     execute("service neutron-plugin-openvswitch-agent restart", True)
-   
+
+def install_and_configure_ovs_odl():
+    execute("apt-get install openvswitch-switch openvswitch-datapath-dkms -y", True)
+    execute("ovs-vsctl set-manager tcp:"+odl_ip+":6640")
+    table_id = execute("ovs-vsctl get Open_vSwitch . _uuid")
+    execute("ovs-vsctl set Open_vSwitch "+table_id+" other_config:provider_mappings=physnet1:br-eth2")
+    execute("ovs-vsctl set Open_vSwitch "+table_id+" other_config:local_ip="+odl_local_ip)
+    execute("ovs-vsctl list Open_vSwitch", True)
 
 initialize_system()
 install_and_configure_ntp()
 install_and_configure_nova()
-install_and_configure_ovs()
+#install_and_configure_ovs()
+install_and_configure_ovs_odl()
